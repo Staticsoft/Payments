@@ -27,6 +27,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Payments.Abstractions\Payments.Abstractions.csproj" />
         <ProjectReference Include="..\Payments.Memory\Payments.Memory.csproj" />
+        <ProjectReference Include="..\Payments.Stripe\Payments.Stripe.csproj" />
     </ItemGroup>
 
 </Project>
