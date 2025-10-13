@@ -124,6 +124,7 @@ Input model for creating or updating subscriptions.
 public record NewSubscription
 {
     public required string CustomerId { get; init; }
+    public TimeSpan TrialPeriod { get; init; } = TimeSpan.Zero;
 }
 ```
 
@@ -362,3 +363,21 @@ Test scenarios are ordered by increasing complexity, following the test ordering
 **And** I have created an active subscription  
 **When** I cancel the subscription  
 **Then** listing subscriptions for the customer shows the subscription with status "Canceled"
+
+#### Scenario: Create subscription with trial period
+**Given** I have created a customer with payment setup  
+**When** I create a subscription with a 14-day trial period  
+**Then** the subscription is created with status "Trialing"
+
+#### Scenario: Cancel trialing subscription
+**Given** I have created a customer with payment setup  
+**And** I have created a subscription with a trial period  
+**When** I cancel the subscription  
+**Then** retrieving the subscription shows status "Canceled"  
+**And** the subscription ID remains unchanged
+
+#### Scenario: Create subscription with trial period without payment setup
+**Given** I have created a customer without payment setup  
+**When** I create a subscription with a 14-day trial period  
+**Then** the subscription is created with status "Trialing"  
+**And** the subscription is associated with the correct customer

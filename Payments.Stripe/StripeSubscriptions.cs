@@ -58,14 +58,17 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
             CollectionMethod = "charge_automatically"
         };
 
-        // Only set PaymentBehavior to incomplete if no payment method exists
+        if (newSubscription.TrialPeriod > TimeSpan.Zero)
+        {
+            options.TrialEnd = DateTime.UtcNow.Add(newSubscription.TrialPeriod);
+        }
+
         if (!hasPaymentMethod)
         {
             options.PaymentBehavior = "default_incomplete";
         }
         else
         {
-            // When payment method exists, allow immediate payment
             options.PaymentBehavior = "allow_incomplete";
         }
 

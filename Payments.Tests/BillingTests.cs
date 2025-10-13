@@ -278,4 +278,59 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
         Assert.Equal(SubscriptionStatus.Canceled, retrieved.Status);
     }
 
+    [Fact]
+    public async Task CreatesSubscriptionWithTrialPeriod()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        await SUT.Customers.SetupPayments(customer.Id);
+
+        var subscription = await SUT.Subscriptions.Create(new NewSubscription 
+        { 
+            CustomerId = customer.Id,
+            TrialPeriod = TimeSpan.FromDays(14)
+        });
+
+        Assert.NotNull(subscription.Id);
+        Assert.NotEmpty(subscription.Id);
+        Assert.Equal(SubscriptionStatus.Trialing, subscription.Status);
+        Assert.Equal(customer.Id, subscription.CustomerId);
+    }
+
+    [Fact]
+    public async Task CancelsTrialingSubscription()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        await SUT.Customers.SetupPayments(customer.Id);
+        var subscription = await SUT.Subscriptions.Create(new NewSubscription 
+        { 
+            CustomerId = customer.Id,
+            TrialPeriod = TimeSpan.FromDays(14)
+        });
+
+        var canceled = await SUT.Subscriptions.Cancel(subscription.Id);
+
+        Assert.Equal(subscription.Id, canceled.Id);
+        Assert.Equal(SubscriptionStatus.Canceled, canceled.Status);
+
+        var retrieved = await SUT.Subscriptions.Get(subscription.Id);
+        Assert.Equal(SubscriptionStatus.Canceled, retrieved.Status);
+    }
+
+    [Fact]
+    public async Task CreatesSubscriptionWithTrialPeriodWithoutPaymentSetup()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        
+        var subscription = await SUT.Subscriptions.Create(new NewSubscription 
+        { 
+            CustomerId = customer.Id,
+            TrialPeriod = TimeSpan.FromDays(14)
+        });
+
+        Assert.NotNull(subscription.Id);
+        Assert.NotEmpty(subscription.Id);
+        Assert.Equal(customer.Id, subscription.CustomerId);
+        
+        Assert.Equal(SubscriptionStatus.Trialing, subscription.Status);
+    }
 }

@@ -26,11 +26,19 @@ public class MemorySubscriptions(MemoryCustomers customers) : Subscriptions
     public Task<Subscription> Create(NewSubscription newSubscription)
     {
         var hasPaymentSetup = Customers.HasPaymentSetup(newSubscription.CustomerId);
+        var hasTrial = newSubscription.TrialPeriod > TimeSpan.Zero;
+        
+        var status = hasTrial
+            ? SubscriptionStatus.Trialing
+            : hasPaymentSetup
+                ? SubscriptionStatus.Active
+                : SubscriptionStatus.Incomplete;
+        
         var subscription = new Subscription
         {
             Id = Guid.NewGuid().ToString(),
             CustomerId = newSubscription.CustomerId,
-            Status = hasPaymentSetup ? SubscriptionStatus.Active : SubscriptionStatus.Incomplete
+            Status = status
         };
         Store[subscription.Id] = subscription;
         return Task.FromResult(subscription);
