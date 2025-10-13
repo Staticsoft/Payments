@@ -109,7 +109,7 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
             "incomplete" => SubscriptionStatus.Incomplete,
             "incomplete_expired" => SubscriptionStatus.IncompleteExpired,
             "trialing" => SubscriptionStatus.Trialing,
-            "past_due" => SubscriptionStatus.PastDue,
+            "past_due" => SubscriptionStatus.Unpaid,
             "unpaid" => SubscriptionStatus.Unpaid,
             _ => throw new ArgumentException($"Unknown subscription status: {status}")
         };

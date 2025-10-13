@@ -139,7 +139,6 @@ public enum SubscriptionStatus
     Incomplete,
     IncompleteExpired,
     Trialing,
-    PastDue,
     Unpaid
 }
 ```
