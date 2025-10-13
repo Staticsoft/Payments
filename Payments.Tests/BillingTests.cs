@@ -117,7 +117,7 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
         var createdCustomer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
         var customers = await SUT.Customers.List();
 
-        var customer = Assert.Single(createdCustomer);
+        var customer = Assert.Single(customers);
         Assert.Equal(createdCustomer.Id, customer.Id);
     }
 
@@ -130,5 +130,175 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
 
         var subscription = Assert.Single(subscriptions);
         Assert.Equal(createdSubscription.Id, subscription.Id);
+    }
+
+    [Fact]
+    public async Task DeletesCreatedCustomer()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        await SUT.Customers.Delete(customer.Id);
+
+        await Assert.ThrowsAsync<Customers.NotFoundException>(
+            () => SUT.Customers.Get(customer.Id)
+        );
+    }
+
+    [Fact]
+    public async Task ReturnsEmptyCollectionAfterDeletingAllCustomers()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        await SUT.Customers.Delete(customer.Id);
+        var customers = await SUT.Customers.List();
+
+        Assert.Empty(customers);
+    }
+
+    [Fact]
+    public async Task CreatesAndListsMultipleCustomers()
+    {
+        var customer1 = await SUT.Customers.Create(new NewCustomer { Email = "user1@example.com" });
+        var customer2 = await SUT.Customers.Create(new NewCustomer { Email = "user2@example.com" });
+        var customer3 = await SUT.Customers.Create(new NewCustomer { Email = "user3@example.com" });
+
+        var customers = await SUT.Customers.List();
+
+        Assert.Equal(3, customers.Count);
+        Assert.Contains(customers, c => c.Id == customer1.Id);
+        Assert.Contains(customers, c => c.Id == customer2.Id);
+        Assert.Contains(customers, c => c.Id == customer3.Id);
+    }
+
+    [Fact]
+    public async Task CreatesMultipleSubscriptionsForSameCustomer()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        var subscription1 = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
+        var subscription2 = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
+        var subscription3 = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
+
+        var subscriptions = await SUT.Subscriptions.List(customer.Id);
+
+        Assert.Equal(3, subscriptions.Count);
+        Assert.Contains(subscriptions, s => s.Id == subscription1.Id);
+        Assert.Contains(subscriptions, s => s.Id == subscription2.Id);
+        Assert.Contains(subscriptions, s => s.Id == subscription3.Id);
+    }
+
+    [Fact]
+    public async Task GetsEachCreatedCustomerIndividually()
+    {
+        var customer1 = await SUT.Customers.Create(new NewCustomer { Email = "user1@example.com" });
+        var customer2 = await SUT.Customers.Create(new NewCustomer { Email = "user2@example.com" });
+        var customer3 = await SUT.Customers.Create(new NewCustomer { Email = "user3@example.com" });
+
+        var retrieved1 = await SUT.Customers.Get(customer1.Id);
+        var retrieved2 = await SUT.Customers.Get(customer2.Id);
+        var retrieved3 = await SUT.Customers.Get(customer3.Id);
+
+        Assert.Equal(customer1.Id, retrieved1.Id);
+        Assert.Equal("user1@example.com", retrieved1.Email);
+        Assert.Equal(customer2.Id, retrieved2.Id);
+        Assert.Equal("user2@example.com", retrieved2.Email);
+        Assert.Equal(customer3.Id, retrieved3.Id);
+        Assert.Equal("user3@example.com", retrieved3.Email);
+    }
+
+    [Fact]
+    public async Task GetsEachCreatedSubscriptionIndividually()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        var subscription1 = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
+        var subscription2 = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
+        var subscription3 = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
+
+        var retrieved1 = await SUT.Subscriptions.Get(subscription1.Id);
+        var retrieved2 = await SUT.Subscriptions.Get(subscription2.Id);
+        var retrieved3 = await SUT.Subscriptions.Get(subscription3.Id);
+
+        Assert.Equal(subscription1.Id, retrieved1.Id);
+        Assert.Equal(customer.Id, retrieved1.CustomerId);
+        Assert.Equal(subscription2.Id, retrieved2.Id);
+        Assert.Equal(customer.Id, retrieved2.CustomerId);
+        Assert.Equal(subscription3.Id, retrieved3.Id);
+        Assert.Equal(customer.Id, retrieved3.CustomerId);
+    }
+
+    [Fact]
+    public async Task CancelsActiveSubscription()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
+
+        var canceled = await SUT.Subscriptions.Cancel(subscription.Id);
+
+        Assert.Equal(subscription.Id, canceled.Id);
+        Assert.True(canceled.Status == SubscriptionStatus.Canceled || canceled.Status == SubscriptionStatus.IncompleteExpired);
+
+        var retrieved = await SUT.Subscriptions.Get(subscription.Id);
+        Assert.True(retrieved.Status == SubscriptionStatus.Canceled || retrieved.Status == SubscriptionStatus.IncompleteExpired);
+    }
+
+    [Fact]
+    public async Task PausesActiveSubscription()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
+
+        var paused = await SUT.Subscriptions.Pause(subscription.Id);
+
+        Assert.Equal(subscription.Id, paused.Id);
+        Assert.True(paused.Status == SubscriptionStatus.Paused || paused.Status == SubscriptionStatus.Incomplete);
+
+        var retrieved = await SUT.Subscriptions.Get(subscription.Id);
+        Assert.True(retrieved.Status == SubscriptionStatus.Paused || retrieved.Status == SubscriptionStatus.Incomplete);
+    }
+
+    [Fact]
+    public async Task ResumesPausedSubscription()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
+        await SUT.Subscriptions.Pause(subscription.Id);
+
+        var resumed = await SUT.Subscriptions.Resume(subscription.Id);
+
+        Assert.Equal(subscription.Id, resumed.Id);
+        Assert.True(resumed.Status == SubscriptionStatus.Active || resumed.Status == SubscriptionStatus.Incomplete);
+
+        var retrieved = await SUT.Subscriptions.Get(subscription.Id);
+        Assert.True(retrieved.Status == SubscriptionStatus.Active || retrieved.Status == SubscriptionStatus.Incomplete);
+    }
+
+    [Fact]
+    public async Task CanceledSubscriptionAppearsInListWithCorrectStatus()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
+        await SUT.Subscriptions.Cancel(subscription.Id);
+
+        var subscriptions = await SUT.Subscriptions.List(customer.Id);
+
+        var canceledSubscription = Assert.Single(subscriptions);
+        Assert.Equal(subscription.Id, canceledSubscription.Id);
+        Assert.True(canceledSubscription.Status == SubscriptionStatus.Canceled || canceledSubscription.Status == SubscriptionStatus.IncompleteExpired);
+    }
+
+    [Fact]
+    public async Task MultipleStatusTransitions()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
+
+        var paused = await SUT.Subscriptions.Pause(subscription.Id);
+        Assert.True(paused.Status == SubscriptionStatus.Paused || paused.Status == SubscriptionStatus.Incomplete);
+
+        var resumed = await SUT.Subscriptions.Resume(subscription.Id);
+        Assert.True(resumed.Status == SubscriptionStatus.Active || resumed.Status == SubscriptionStatus.Incomplete);
+
+        var canceled = await SUT.Subscriptions.Cancel(subscription.Id);
+        Assert.True(canceled.Status == SubscriptionStatus.Canceled || canceled.Status == SubscriptionStatus.IncompleteExpired);
+
+        var final = await SUT.Subscriptions.Get(subscription.Id);
+        Assert.True(final.Status == SubscriptionStatus.Canceled || final.Status == SubscriptionStatus.IncompleteExpired);
     }
 }

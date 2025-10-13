@@ -24,6 +24,10 @@ public class StripeCustomers(StripeBillingOptions options) : Customers
         try
         {
             var stripeCustomer = await service.GetAsync(customerId);
+            
+            if (stripeCustomer.Deleted.HasValue && stripeCustomer.Deleted.Value)
+                throw new Customers.NotFoundException(customerId);
+            
             return MapToCustomer(stripeCustomer);
         }
         catch (StripeException ex) when (ex.StripeError?.Type == "invalid_request_error")

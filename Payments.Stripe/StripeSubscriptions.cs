@@ -14,7 +14,8 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 
         var options = new SubscriptionListOptions
         {
-            Customer = customerId
+            Customer = customerId,
+            Status = "all"
         };
 
         var subscriptions = await service.ListAsync(options);
