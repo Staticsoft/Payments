@@ -5,6 +5,7 @@ namespace Staticsoft.Payments.Memory;
 public class MemoryCustomers : Customers
 {
     readonly Dictionary<string, Customer> Store = new();
+    readonly HashSet<string> CustomersWithPaymentSetup = new();
 
     public Task<IReadOnlyCollection<Customer>> List()
     {
@@ -38,4 +39,16 @@ public class MemoryCustomers : Customers
         Store.Remove(customerId);
         return Task.CompletedTask;
     }
+
+    public Task SetupPayments(string customerId)
+    {
+        if (!Store.ContainsKey(customerId))
+            throw new Customers.NotFoundException(customerId);
+
+        CustomersWithPaymentSetup.Add(customerId);
+        return Task.CompletedTask;
+    }
+
+    public bool HasPaymentSetup(string customerId)
+        => CustomersWithPaymentSetup.Contains(customerId);
 }

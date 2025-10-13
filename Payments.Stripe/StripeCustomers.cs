@@ -65,6 +65,48 @@ public class StripeCustomers(StripeBillingOptions options) : Customers
         }
     }
 
+    public async Task SetupPayments(string customerId)
+    {
+        StripeConfiguration.ApiKey = Options.ApiKey;
+        
+        try
+        {
+            // Create a test payment method
+            var paymentMethodService = new PaymentMethodService();
+            var paymentMethodOptions = new PaymentMethodCreateOptions
+            {
+                Type = "card",
+                Card = new PaymentMethodCardOptions
+                {
+                    Token = "tok_visa" // Stripe test token
+                }
+            };
+            var paymentMethod = await paymentMethodService.CreateAsync(paymentMethodOptions);
+
+            // Attach payment method to customer
+            var attachOptions = new PaymentMethodAttachOptions
+            {
+                Customer = customerId
+            };
+            await paymentMethodService.AttachAsync(paymentMethod.Id, attachOptions);
+
+            // Set as default payment method
+            var customerService = new CustomerService();
+            var customerUpdateOptions = new CustomerUpdateOptions
+            {
+                InvoiceSettings = new CustomerInvoiceSettingsOptions
+                {
+                    DefaultPaymentMethod = paymentMethod.Id
+                }
+            };
+            await customerService.UpdateAsync(customerId, customerUpdateOptions);
+        }
+        catch (StripeException ex) when (ex.StripeError?.Type == "invalid_request_error")
+        {
+            throw new Customers.NotFoundException(customerId);
+        }
+    }
+
     static Abstractions.Customer MapToCustomer(global::Stripe.Customer stripeCustomer)
         => new()
         {

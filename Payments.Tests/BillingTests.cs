@@ -49,22 +49,6 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task ThrowsNotFoundExceptionWhenPausingNonExistingSubscription()
-    {
-        await Assert.ThrowsAsync<Subscriptions.NotFoundException>(
-            () => SUT.Subscriptions.Pause("non-existing-id")
-        );
-    }
-
-    [Fact]
-    public async Task ThrowsNotFoundExceptionWhenResumingNonExistingSubscription()
-    {
-        await Assert.ThrowsAsync<Subscriptions.NotFoundException>(
-            () => SUT.Subscriptions.Resume("non-existing-id")
-        );
-    }
-
-    [Fact]
     public async Task ReturnsEmptyCollectionWhenNoCustomersExist()
     {
         var customers = await SUT.Customers.List();
@@ -239,37 +223,6 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task PausesIncompleteSubscription()
-    {
-        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
-        var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
-
-        var paused = await SUT.Subscriptions.Pause(subscription.Id);
-
-        Assert.Equal(subscription.Id, paused.Id);
-        Assert.Equal(SubscriptionStatus.Incomplete, paused.Status);
-
-        var retrieved = await SUT.Subscriptions.Get(subscription.Id);
-        Assert.Equal(SubscriptionStatus.Incomplete, retrieved.Status);
-    }
-
-    [Fact]
-    public async Task ResumesIncompleteSubscription()
-    {
-        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
-        var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
-        await SUT.Subscriptions.Pause(subscription.Id);
-
-        var resumed = await SUT.Subscriptions.Resume(subscription.Id);
-
-        Assert.Equal(subscription.Id, resumed.Id);
-        Assert.Equal(SubscriptionStatus.Incomplete, resumed.Status);
-
-        var retrieved = await SUT.Subscriptions.Get(subscription.Id);
-        Assert.Equal(SubscriptionStatus.Incomplete, retrieved.Status);
-    }
-
-    [Fact]
     public async Task CanceledSubscriptionAppearsInListWithCorrectStatus()
     {
         var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
@@ -284,21 +237,45 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task MultipleStatusTransitions()
+    public async Task SetsUpPaymentsForCustomer()
     {
         var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+
+        await SUT.Customers.SetupPayments(customer.Id);
+
+        // Verify customer still exists after setup
+        var retrieved = await SUT.Customers.Get(customer.Id);
+        Assert.Equal(customer.Id, retrieved.Id);
+    }
+
+    [Fact]
+    public async Task CreatesActiveSubscriptionWithPaymentSetup()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        await SUT.Customers.SetupPayments(customer.Id);
+
         var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
 
-        var paused = await SUT.Subscriptions.Pause(subscription.Id);
-        Assert.Equal(SubscriptionStatus.Incomplete, paused.Status);
+        Assert.NotNull(subscription.Id);
+        Assert.NotEmpty(subscription.Id);
+        Assert.Equal(SubscriptionStatus.Active, subscription.Status);
+        Assert.Equal(customer.Id, subscription.CustomerId);
+    }
 
-        var resumed = await SUT.Subscriptions.Resume(subscription.Id);
-        Assert.Equal(SubscriptionStatus.Incomplete, resumed.Status);
+    [Fact]
+    public async Task CancelsActiveSubscription()
+    {
+        var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+        await SUT.Customers.SetupPayments(customer.Id);
+        var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
 
         var canceled = await SUT.Subscriptions.Cancel(subscription.Id);
-        Assert.Equal(SubscriptionStatus.IncompleteExpired, canceled.Status);
 
-        var final = await SUT.Subscriptions.Get(subscription.Id);
-        Assert.Equal(SubscriptionStatus.IncompleteExpired, final.Status);
+        Assert.Equal(subscription.Id, canceled.Id);
+        Assert.Equal(SubscriptionStatus.Canceled, canceled.Status);
+
+        var retrieved = await SUT.Subscriptions.Get(subscription.Id);
+        Assert.Equal(SubscriptionStatus.Canceled, retrieved.Status);
     }
+
 }

@@ -6,6 +6,7 @@ public interface Customers
     Task<Customer> Get(string customerId);
     Task<Customer> Create(NewCustomer newCustomer);
     Task Delete(string customerId);
+    Task SetupPayments(string customerId);
 
     public class NotFoundException(string customerId)
         : Exception(ToMessage(customerId))

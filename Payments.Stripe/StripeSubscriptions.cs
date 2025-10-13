@@ -42,6 +42,11 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
     {
         StripeConfiguration.ApiKey = Options.ApiKey;
         var service = new SubscriptionService();
+        var customerService = new CustomerService();
+
+        // Check if customer has a default payment method
+        var customer = await customerService.GetAsync(newSubscription.CustomerId);
+        var hasPaymentMethod = customer.InvoiceSettings?.DefaultPaymentMethodId != null;
 
         var options = new SubscriptionCreateOptions
         {
@@ -50,10 +55,22 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
             {
                 new() { Price = Options.PriceId }
             },
-            PaymentBehavior = "default_incomplete"
+            CollectionMethod = "charge_automatically"
         };
 
+        // Only set PaymentBehavior to incomplete if no payment method exists
+        if (!hasPaymentMethod)
+        {
+            options.PaymentBehavior = "default_incomplete";
+        }
+        else
+        {
+            // When payment method exists, allow immediate payment
+            options.PaymentBehavior = "allow_incomplete";
+        }
+
         var stripeSubscription = await service.CreateAsync(options);
+
         return MapToSubscription(stripeSubscription);
     }
 
@@ -81,55 +98,11 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
         }
     }
 
-    public async Task<Abstractions.Subscription> Pause(string subscriptionId)
-    {
-        StripeConfiguration.ApiKey = Options.ApiKey;
-        var service = new SubscriptionService();
-
-        try
-        {
-            var options = new SubscriptionUpdateOptions
-            {
-                PauseCollection = new SubscriptionPauseCollectionOptions
-                {
-                    Behavior = "void"
-                }
-            };
-            var stripeSubscription = await service.UpdateAsync(subscriptionId, options);
-            return MapToSubscription(stripeSubscription);
-        }
-        catch (StripeException ex) when (ex.StripeError?.Type == "invalid_request_error")
-        {
-            throw new Subscriptions.NotFoundException(subscriptionId);
-        }
-    }
-
-    public async Task<Abstractions.Subscription> Resume(string subscriptionId)
-    {
-        StripeConfiguration.ApiKey = Options.ApiKey;
-        var service = new SubscriptionService();
-
-        try
-        {
-            var options = new SubscriptionUpdateOptions
-            {
-                PauseCollection = null
-            };
-            var stripeSubscription = await service.UpdateAsync(subscriptionId, options);
-            return MapToSubscription(stripeSubscription);
-        }
-        catch (StripeException ex) when (ex.StripeError?.Type == "invalid_request_error")
-        {
-            throw new Subscriptions.NotFoundException(subscriptionId);
-        }
-    }
-
     static SubscriptionStatus MapStatus(string status)
         => status switch
         {
             "active" => SubscriptionStatus.Active,
             "canceled" => SubscriptionStatus.Canceled,
-            "paused" => SubscriptionStatus.Paused,
             "incomplete" => SubscriptionStatus.Incomplete,
             "incomplete_expired" => SubscriptionStatus.IncompleteExpired,
             "trialing" => SubscriptionStatus.Trialing,

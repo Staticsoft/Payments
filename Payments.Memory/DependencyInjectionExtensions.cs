@@ -8,6 +8,7 @@ public static class DependencyInjectionExtensions
     public static IServiceCollection UseMemoryBilling(this IServiceCollection services)
         => services
             .AddSingleton<Billing>()
-            .AddSingleton<Subscriptions, MemorySubscriptions>()
-            .AddSingleton<Customers, MemoryCustomers>();
+            .AddSingleton<MemoryCustomers>()
+            .AddSingleton<Customers>(sp => sp.GetRequiredService<MemoryCustomers>())
+            .AddSingleton<Subscriptions, MemorySubscriptions>();
 }
