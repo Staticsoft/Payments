@@ -297,7 +297,7 @@ Test scenarios are ordered by increasing complexity, following the test ordering
 **When** I create a subscription for the customer  
 **Then** the subscription is created with a unique ID  
 **And** I can retrieve the subscription by its ID  
-**And** the subscription has status "Active"  
+**And** the subscription has status "Incomplete"  
 **And** the subscription is associated with the correct customer
 
 #### Scenario: List customers returns single customer after creation
@@ -351,33 +351,34 @@ Test scenarios are ordered by increasing complexity, following the test ordering
 
 ### Level 6: Update Operations
 
-#### Scenario: Cancel active subscription
-**Given** I have created a customer with an active subscription  
+#### Scenario: Cancel incomplete subscription
+**Given** I have created a customer with an incomplete subscription  
 **When** I cancel the subscription  
-**Then** retrieving the subscription shows status "Canceled"  
+**Then** retrieving the subscription shows status "IncompleteExpired"  
 **And** the subscription ID remains unchanged
 
-#### Scenario: Pause active subscription
-**Given** I have created a customer with an active subscription  
+#### Scenario: Pause incomplete subscription
+**Given** I have created a customer with an incomplete subscription  
 **When** I pause the subscription  
-**Then** retrieving the subscription shows status "Paused"  
+**Then** retrieving the subscription shows status "Incomplete"  
 **And** the subscription ID remains unchanged
 
-#### Scenario: Resume paused subscription
-**Given** I have created a customer with a paused subscription  
+#### Scenario: Resume incomplete subscription
+**Given** I have created a customer with an incomplete subscription  
 **When** I resume the subscription  
-**Then** retrieving the subscription shows status "Active"  
+**Then** retrieving the subscription shows status "Incomplete"  
 **And** the subscription ID remains unchanged
 
 #### Scenario: Canceled subscription appears in list with correct status
-**Given** I have created a customer with an active subscription  
+**Given** I have created a customer with an incomplete subscription  
 **When** I cancel the subscription  
-**Then** listing subscriptions for the customer shows the subscription with status "Canceled"
+**Then** listing subscriptions for the customer shows the subscription with status "IncompleteExpired"
 
 #### Scenario: Multiple status transitions
-**Given** I have created a customer with an active subscription  
+**Given** I have created a customer with an incomplete subscription  
 **When** I pause the subscription  
-**And** I resume the subscription  
-**And** I cancel the subscription  
-**Then** the final status is "Canceled"  
-**And** each transition is reflected correctly
+**Then** the status remains "Incomplete"  
+**When** I resume the subscription  
+**Then** the status remains "Incomplete"  
+**When** I cancel the subscription  
+**Then** the final status is "IncompleteExpired"

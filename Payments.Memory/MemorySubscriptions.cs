@@ -28,7 +28,7 @@ public class MemorySubscriptions : Subscriptions
         {
             Id = Guid.NewGuid().ToString(),
             CustomerId = newSubscription.CustomerId,
-            Status = SubscriptionStatus.Active
+            Status = SubscriptionStatus.Incomplete
         };
         Store[subscription.Id] = subscription;
         return Task.FromResult(subscription);
@@ -40,7 +40,10 @@ public class MemorySubscriptions : Subscriptions
             throw new Subscriptions.NotFoundException(subscriptionId);
 
         var subscription = Store[subscriptionId];
-        var canceled = subscription with { Status = SubscriptionStatus.Canceled };
+        var newStatus = subscription.Status == SubscriptionStatus.Incomplete 
+            ? SubscriptionStatus.IncompleteExpired 
+            : SubscriptionStatus.Canceled;
+        var canceled = subscription with { Status = newStatus };
         Store[subscriptionId] = canceled;
         return Task.FromResult(canceled);
     }
@@ -51,7 +54,10 @@ public class MemorySubscriptions : Subscriptions
             throw new Subscriptions.NotFoundException(subscriptionId);
 
         var subscription = Store[subscriptionId];
-        var paused = subscription with { Status = SubscriptionStatus.Paused };
+        var newStatus = subscription.Status == SubscriptionStatus.Incomplete 
+            ? SubscriptionStatus.Incomplete 
+            : SubscriptionStatus.Paused;
+        var paused = subscription with { Status = newStatus };
         Store[subscriptionId] = paused;
         return Task.FromResult(paused);
     }
@@ -62,7 +68,10 @@ public class MemorySubscriptions : Subscriptions
             throw new Subscriptions.NotFoundException(subscriptionId);
 
         var subscription = Store[subscriptionId];
-        var resumed = subscription with { Status = SubscriptionStatus.Active };
+        var newStatus = subscription.Status == SubscriptionStatus.Incomplete 
+            ? SubscriptionStatus.Incomplete 
+            : SubscriptionStatus.Active;
+        var resumed = subscription with { Status = newStatus };
         Store[subscriptionId] = resumed;
         return Task.FromResult(resumed);
     }

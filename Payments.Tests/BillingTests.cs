@@ -107,7 +107,7 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
         var retrieved = await SUT.Subscriptions.Get(subscription.Id);
 
         Assert.Equal(subscription.Id, retrieved.Id);
-        Assert.True(retrieved.Status == SubscriptionStatus.Active || retrieved.Status == SubscriptionStatus.Incomplete);
+        Assert.Equal(SubscriptionStatus.Incomplete, retrieved.Status);
         Assert.Equal(customer.Id, retrieved.CustomerId);
     }
 
@@ -224,7 +224,7 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task CancelsActiveSubscription()
+    public async Task CancelsIncompleteSubscription()
     {
         var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
         var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
@@ -232,14 +232,14 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
         var canceled = await SUT.Subscriptions.Cancel(subscription.Id);
 
         Assert.Equal(subscription.Id, canceled.Id);
-        Assert.True(canceled.Status == SubscriptionStatus.Canceled || canceled.Status == SubscriptionStatus.IncompleteExpired);
+        Assert.Equal(SubscriptionStatus.IncompleteExpired, canceled.Status);
 
         var retrieved = await SUT.Subscriptions.Get(subscription.Id);
-        Assert.True(retrieved.Status == SubscriptionStatus.Canceled || retrieved.Status == SubscriptionStatus.IncompleteExpired);
+        Assert.Equal(SubscriptionStatus.IncompleteExpired, retrieved.Status);
     }
 
     [Fact]
-    public async Task PausesActiveSubscription()
+    public async Task PausesIncompleteSubscription()
     {
         var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
         var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
@@ -247,14 +247,14 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
         var paused = await SUT.Subscriptions.Pause(subscription.Id);
 
         Assert.Equal(subscription.Id, paused.Id);
-        Assert.True(paused.Status == SubscriptionStatus.Paused || paused.Status == SubscriptionStatus.Incomplete);
+        Assert.Equal(SubscriptionStatus.Incomplete, paused.Status);
 
         var retrieved = await SUT.Subscriptions.Get(subscription.Id);
-        Assert.True(retrieved.Status == SubscriptionStatus.Paused || retrieved.Status == SubscriptionStatus.Incomplete);
+        Assert.Equal(SubscriptionStatus.Incomplete, retrieved.Status);
     }
 
     [Fact]
-    public async Task ResumesPausedSubscription()
+    public async Task ResumesIncompleteSubscription()
     {
         var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
         var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
@@ -263,10 +263,10 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
         var resumed = await SUT.Subscriptions.Resume(subscription.Id);
 
         Assert.Equal(subscription.Id, resumed.Id);
-        Assert.True(resumed.Status == SubscriptionStatus.Active || resumed.Status == SubscriptionStatus.Incomplete);
+        Assert.Equal(SubscriptionStatus.Incomplete, resumed.Status);
 
         var retrieved = await SUT.Subscriptions.Get(subscription.Id);
-        Assert.True(retrieved.Status == SubscriptionStatus.Active || retrieved.Status == SubscriptionStatus.Incomplete);
+        Assert.Equal(SubscriptionStatus.Incomplete, retrieved.Status);
     }
 
     [Fact]
@@ -280,7 +280,7 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
 
         var canceledSubscription = Assert.Single(subscriptions);
         Assert.Equal(subscription.Id, canceledSubscription.Id);
-        Assert.True(canceledSubscription.Status == SubscriptionStatus.Canceled || canceledSubscription.Status == SubscriptionStatus.IncompleteExpired);
+        Assert.Equal(SubscriptionStatus.IncompleteExpired, canceledSubscription.Status);
     }
 
     [Fact]
@@ -290,15 +290,15 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
         var subscription = await SUT.Subscriptions.Create(new NewSubscription { CustomerId = customer.Id });
 
         var paused = await SUT.Subscriptions.Pause(subscription.Id);
-        Assert.True(paused.Status == SubscriptionStatus.Paused || paused.Status == SubscriptionStatus.Incomplete);
+        Assert.Equal(SubscriptionStatus.Incomplete, paused.Status);
 
         var resumed = await SUT.Subscriptions.Resume(subscription.Id);
-        Assert.True(resumed.Status == SubscriptionStatus.Active || resumed.Status == SubscriptionStatus.Incomplete);
+        Assert.Equal(SubscriptionStatus.Incomplete, resumed.Status);
 
         var canceled = await SUT.Subscriptions.Cancel(subscription.Id);
-        Assert.True(canceled.Status == SubscriptionStatus.Canceled || canceled.Status == SubscriptionStatus.IncompleteExpired);
+        Assert.Equal(SubscriptionStatus.IncompleteExpired, canceled.Status);
 
         var final = await SUT.Subscriptions.Get(subscription.Id);
-        Assert.True(final.Status == SubscriptionStatus.Canceled || final.Status == SubscriptionStatus.IncompleteExpired);
+        Assert.Equal(SubscriptionStatus.IncompleteExpired, final.Status);
     }
 }
