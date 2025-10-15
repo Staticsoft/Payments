@@ -15,7 +15,7 @@ Manages payment-related operations including subscriptions and customers.
 ## Interfaces
 
 ### Subscriptions
-Manages subscription lifecycle including creation, cancellation, pausing, and resuming.
+Manages subscription lifecycle including creation and cancellation.
 
 **Methods**:
 ```csharp
@@ -50,22 +50,6 @@ public interface Subscriptions
     /// <returns>The canceled subscription.</returns>
     /// <exception cref="Subscriptions.NotFoundException">Thrown when the subscription does not exist.</exception>
     Task<Subscription> Cancel(string subscriptionId);
-    
-    /// <summary>
-    /// Pauses an active subscription.
-    /// </summary>
-    /// <param name="subscriptionId">The unique identifier of the subscription to pause.</param>
-    /// <returns>The paused subscription.</returns>
-    /// <exception cref="Subscriptions.NotFoundException">Thrown when the subscription does not exist.</exception>
-    Task<Subscription> Pause(string subscriptionId);
-    
-    /// <summary>
-    /// Resumes a paused subscription.
-    /// </summary>
-    /// <param name="subscriptionId">The unique identifier of the subscription to resume.</param>
-    /// <returns>The resumed subscription.</returns>
-    /// <exception cref="Subscriptions.NotFoundException">Thrown when the subscription does not exist.</exception>
-    Task<Subscription> Resume(string subscriptionId);
 }
 ```
 
@@ -106,6 +90,13 @@ public interface Customers
     /// <param name="customerId">The unique identifier of the customer to delete.</param>
     /// <exception cref="Customers.NotFoundException">Thrown when the customer does not exist.</exception>
     Task Delete(string customerId);
+    
+    /// <summary>
+    /// Sets up payment methods for a customer, enabling active subscriptions.
+    /// </summary>
+    /// <param name="customerId">The unique identifier of the customer.</param>
+    /// <exception cref="Customers.NotFoundException">Thrown when the customer does not exist.</exception>
+    Task SetupPayments(string customerId);
 }
 ```
 
@@ -133,6 +124,7 @@ Input model for creating or updating subscriptions.
 public record NewSubscription
 {
     public required string CustomerId { get; init; }
+    public TimeSpan TrialPeriod { get; init; } = TimeSpan.Zero;
 }
 ```
 
@@ -144,11 +136,9 @@ public enum SubscriptionStatus
 {
     Active,
     Canceled,
-    Paused,
     Incomplete,
     IncompleteExpired,
     Trialing,
-    PastDue,
     Unpaid
 }
 ```
@@ -260,16 +250,6 @@ Test scenarios are ordered by increasing complexity, following the test ordering
 **When** I try to delete a customer with ID "non-existing-id"  
 **Then** a `Customers.NotFoundException` is thrown
 
-#### Scenario: Pause non-existing subscription throws NotFoundException
-**Given** the system is empty  
-**When** I try to pause a subscription with ID "non-existing-id"  
-**Then** a `Subscriptions.NotFoundException` is thrown
-
-#### Scenario: Resume non-existing subscription throws NotFoundException
-**Given** the system is empty  
-**When** I try to resume a subscription with ID "non-existing-id"  
-**Then** a `Subscriptions.NotFoundException` is thrown
-
 ### Level 2: Read-Only Operations on Empty System
 
 #### Scenario: List customers returns empty collection when no customers exist
@@ -297,7 +277,7 @@ Test scenarios are ordered by increasing complexity, following the test ordering
 **When** I create a subscription for the customer  
 **Then** the subscription is created with a unique ID  
 **And** I can retrieve the subscription by its ID  
-**And** the subscription has status "Active"  
+**And** the subscription has status "Incomplete"  
 **And** the subscription is associated with the correct customer
 
 #### Scenario: List customers returns single customer after creation
@@ -351,33 +331,52 @@ Test scenarios are ordered by increasing complexity, following the test ordering
 
 ### Level 6: Update Operations
 
+#### Scenario: Setup payments for customer
+**Given** I have created a customer  
+**When** I setup payments for the customer  
+**Then** the customer is ready to have active subscriptions
+
+#### Scenario: Create active subscription with payment setup
+**Given** I have created a customer  
+**And** I have setup payments for the customer  
+**When** I create a subscription for the customer  
+**Then** the subscription is created with status "Active"  
+**And** the subscription is associated with the correct customer
+
 #### Scenario: Cancel active subscription
-**Given** I have created a customer with an active subscription  
+**Given** I have created a customer with payment setup  
+**And** I have created an active subscription  
 **When** I cancel the subscription  
 **Then** retrieving the subscription shows status "Canceled"  
 **And** the subscription ID remains unchanged
 
-#### Scenario: Pause active subscription
-**Given** I have created a customer with an active subscription  
-**When** I pause the subscription  
-**Then** retrieving the subscription shows status "Paused"  
+#### Scenario: Cancel incomplete subscription
+**Given** I have created a customer without payment setup  
+**And** I have created an incomplete subscription  
+**When** I cancel the subscription  
+**Then** retrieving the subscription shows status "IncompleteExpired"  
 **And** the subscription ID remains unchanged
 
-#### Scenario: Resume paused subscription
-**Given** I have created a customer with a paused subscription  
-**When** I resume the subscription  
-**Then** retrieving the subscription shows status "Active"  
-**And** the subscription ID remains unchanged
-
-#### Scenario: Canceled subscription appears in list with correct status
-**Given** I have created a customer with an active subscription  
+#### Scenario: Canceled active subscription appears in list with correct status
+**Given** I have created a customer with payment setup  
+**And** I have created an active subscription  
 **When** I cancel the subscription  
 **Then** listing subscriptions for the customer shows the subscription with status "Canceled"
 
-#### Scenario: Multiple status transitions
-**Given** I have created a customer with an active subscription  
-**When** I pause the subscription  
-**And** I resume the subscription  
-**And** I cancel the subscription  
-**Then** the final status is "Canceled"  
-**And** each transition is reflected correctly
+#### Scenario: Create subscription with trial period
+**Given** I have created a customer with payment setup  
+**When** I create a subscription with a 14-day trial period  
+**Then** the subscription is created with status "Trialing"
+
+#### Scenario: Cancel trialing subscription
+**Given** I have created a customer with payment setup  
+**And** I have created a subscription with a trial period  
+**When** I cancel the subscription  
+**Then** retrieving the subscription shows status "Canceled"  
+**And** the subscription ID remains unchanged
+
+#### Scenario: Create subscription with trial period without payment setup
+**Given** I have created a customer without payment setup  
+**When** I create a subscription with a 14-day trial period  
+**Then** the subscription is created with status "Trialing"  
+**And** the subscription is associated with the correct customer
