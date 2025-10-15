@@ -1,5 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <RootNamespace>Staticsoft.$(MSBuildProjectName)</RootNamespace>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\Payments.Abstractions\Payments.Abstractions.csproj" />
     </ItemGroup>
