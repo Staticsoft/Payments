@@ -6,6 +6,7 @@ public interface Subscriptions
     Task<Subscription> Get(string subscriptionId);
     Task<Subscription> Create(NewSubscription newSubscription);
     Task<Subscription> Cancel(string subscriptionId);
+    Task<string> CreateSession(NewSession newSession);
 
     public class NotFoundException(string subscriptionId)
         : Exception(ToMessage(subscriptionId))
