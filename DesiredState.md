@@ -50,6 +50,13 @@ public interface Subscriptions
     /// <returns>The canceled subscription.</returns>
     /// <exception cref="Subscriptions.NotFoundException">Thrown when the subscription does not exist.</exception>
     Task<Subscription> Cancel(string subscriptionId);
+    
+    /// <summary>
+    /// Creates a checkout session for a customer to set up payment and start a subscription.
+    /// </summary>
+    /// <param name="newSession">The checkout session details.</param>
+    /// <returns>The URL where the customer should be redirected to complete checkout.</returns>
+    Task<string> CreateSession(NewSession newSession);
 }
 ```
 
@@ -161,6 +168,18 @@ Input model for creating customers.
 public record NewCustomer
 {
     public required string Email { get; init; }
+}
+```
+
+### NewSession
+Input model for creating checkout sessions.
+
+```csharp
+public record NewSession
+{
+    public required string CustomerId { get; init; }
+    public TimeSpan TrialPeriod { get; init; } = TimeSpan.Zero;
+    public required string SuccessUrl { get; init; }
 }
 ```
 
@@ -291,6 +310,18 @@ Test scenarios are ordered by increasing complexity, following the test ordering
 **When** I create a subscription for the customer  
 **Then** listing subscriptions for the customer returns exactly one subscription  
 **And** the subscription matches the created subscription
+
+#### Scenario: Create checkout session without trial and verify valid URL is returned
+**Given** I have created a customer  
+**When** I create a checkout session for the customer without a trial period  
+**Then** a valid URL is returned  
+**And** the URL starts with "http://" or "https://"
+
+#### Scenario: Create checkout session with trial and verify valid URL is returned
+**Given** I have created a customer  
+**When** I create a checkout session for the customer with a 14-day trial period  
+**Then** a valid URL is returned  
+**And** the URL starts with "http://" or "https://"
 
 ### Level 4: Create + Delete Cycle
 
