@@ -1,5 +1,4 @@
 using Staticsoft.Payments.Abstractions;
-using Stripe;
 
 namespace Staticsoft.Payments.Stripe;
 
@@ -7,19 +6,19 @@ public class StripeCustomers(StripeBillingOptions options) : Customers
 {
 	readonly StripeBillingOptions Options = options;
 
-	public async Task<IReadOnlyCollection<Abstractions.Customer>> List()
+	public async Task<IReadOnlyCollection<Customer>> List()
 	{
 		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new CustomerService();
+		var service = new StripeCustomerService();
 
 		var customers = await service.ListAsync();
 		return customers.Data.Select(MapToCustomer).ToArray();
 	}
 
-	public async Task<Abstractions.Customer> Get(string customerId)
+	public async Task<Customer> Get(string customerId)
 	{
 		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new CustomerService();
+		var service = new StripeCustomerService();
 
 		try
 		{
@@ -36,12 +35,12 @@ public class StripeCustomers(StripeBillingOptions options) : Customers
 		}
 	}
 
-	public async Task<Abstractions.Customer> Create(NewCustomer newCustomer)
+	public async Task<Customer> Create(NewCustomer newCustomer)
 	{
 		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new CustomerService();
+		var service = new StripeCustomerService();
 
-		var options = new CustomerCreateOptions
+		var options = new StripeCustomerCreateOptions
 		{
 			Email = newCustomer.Email
 		};
@@ -53,7 +52,7 @@ public class StripeCustomers(StripeBillingOptions options) : Customers
 	public async Task Delete(string customerId)
 	{
 		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new CustomerService();
+		var service = new StripeCustomerService();
 
 		try
 		{
@@ -72,11 +71,11 @@ public class StripeCustomers(StripeBillingOptions options) : Customers
 		try
 		{
 			// Create a test payment method
-			var paymentMethodService = new PaymentMethodService();
-			var paymentMethodOptions = new PaymentMethodCreateOptions
+			var paymentMethodService = new StripePaymentMethodService();
+			var paymentMethodOptions = new StripePaymentMethodCreateOptions
 			{
 				Type = "card",
-				Card = new PaymentMethodCardOptions
+				Card = new StripePaymentMethodCardOptions
 				{
 					Token = "tok_visa" // Stripe test token
 				}
@@ -84,17 +83,17 @@ public class StripeCustomers(StripeBillingOptions options) : Customers
 			var paymentMethod = await paymentMethodService.CreateAsync(paymentMethodOptions);
 
 			// Attach payment method to customer
-			var attachOptions = new PaymentMethodAttachOptions
+			var attachOptions = new StripePaymentMethodAttachOptions
 			{
 				Customer = customerId
 			};
 			await paymentMethodService.AttachAsync(paymentMethod.Id, attachOptions);
 
 			// Set as default payment method
-			var customerService = new CustomerService();
-			var customerUpdateOptions = new CustomerUpdateOptions
+			var customerService = new StripeCustomerService();
+			var customerUpdateOptions = new StripeCustomerUpdateOptions
 			{
-				InvoiceSettings = new CustomerInvoiceSettingsOptions
+				InvoiceSettings = new StripeCustomerInvoiceSettingsOptions
 				{
 					DefaultPaymentMethod = paymentMethod.Id
 				}
@@ -107,7 +106,7 @@ public class StripeCustomers(StripeBillingOptions options) : Customers
 		}
 	}
 
-	static Abstractions.Customer MapToCustomer(global::Stripe.Customer stripeCustomer)
+	static Customer MapToCustomer(StripeCustomer stripeCustomer)
 		=> new()
 		{
 			Id = stripeCustomer.Id,

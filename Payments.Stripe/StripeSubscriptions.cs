@@ -1,6 +1,4 @@
 using Staticsoft.Payments.Abstractions;
-using Stripe;
-using Stripe.Checkout;
 
 namespace Staticsoft.Payments.Stripe;
 
@@ -8,12 +6,12 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 {
 	readonly StripeBillingOptions Options = options;
 
-	public async Task<IReadOnlyCollection<Abstractions.Subscription>> List(string customerId)
+	public async Task<IReadOnlyCollection<Subscription>> List(string customerId)
 	{
 		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new SubscriptionService();
+		var service = new StripeSubscriptionService();
 
-		var options = new SubscriptionListOptions
+		var options = new StripeSubscriptionListOptions
 		{
 			Customer = customerId,
 			Status = "all"
@@ -23,10 +21,10 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 		return subscriptions.Data.Select(MapToSubscription).ToArray();
 	}
 
-	public async Task<Abstractions.Subscription> Get(string subscriptionId)
+	public async Task<Subscription> Get(string subscriptionId)
 	{
 		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new SubscriptionService();
+		var service = new StripeSubscriptionService();
 
 		try
 		{
@@ -39,20 +37,20 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 		}
 	}
 
-	public async Task<Abstractions.Subscription> Create(NewSubscription newSubscription)
+	public async Task<Subscription> Create(NewSubscription newSubscription)
 	{
 		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new SubscriptionService();
-		var customerService = new CustomerService();
+		var service = new StripeSubscriptionService();
+		var customerService = new StripeCustomerService();
 
 		// Check if customer has a default payment method
 		var customer = await customerService.GetAsync(newSubscription.CustomerId);
 		var hasPaymentMethod = customer.InvoiceSettings?.DefaultPaymentMethodId != null;
 
-		var options = new SubscriptionCreateOptions
+		var options = new StripeSubscriptionCreateOptions
 		{
 			Customer = newSubscription.CustomerId,
-			Items = new List<SubscriptionItemOptions>
+			Items = new List<StripeSubscriptionItemOptions>
 			{
 				new() { Price = Options.PriceId }
 			},
@@ -78,7 +76,7 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 		return MapToSubscription(stripeSubscription);
 	}
 
-	static Abstractions.Subscription MapToSubscription(global::Stripe.Subscription stripeSubscription)
+	static Subscription MapToSubscription(StripeSubscription stripeSubscription)
 		=> new()
 		{
 			Id = stripeSubscription.Id,
@@ -86,10 +84,10 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 			Status = MapStatus(stripeSubscription.Status)
 		};
 
-	public async Task<Abstractions.Subscription> Cancel(string subscriptionId)
+	public async Task<Subscription> Cancel(string subscriptionId)
 	{
 		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new SubscriptionService();
+		var service = new StripeSubscriptionService();
 
 		try
 		{
