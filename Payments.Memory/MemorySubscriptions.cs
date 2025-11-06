@@ -57,11 +57,4 @@ public class MemorySubscriptions(MemoryCustomers customers) : Subscriptions
         Store[subscriptionId] = canceled;
         return Task.FromResult(canceled);
     }
-
-    public Task<string> CreateSession(NewSession newSession)
-    {
-        var sessionId = Guid.NewGuid().ToString();
-        var url = $"https://checkout.example.com/session/{sessionId}";
-        return Task.FromResult(url);
-    }
 }

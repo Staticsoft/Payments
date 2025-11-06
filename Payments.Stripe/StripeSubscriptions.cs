@@ -114,36 +114,4 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 			"unpaid" => SubscriptionStatus.Unpaid,
 			_ => throw new ArgumentException($"Unknown subscription status: {status}")
 		};
-
-	public async Task<string> CreateSession(NewSession newSession)
-	{
-		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new SessionService();
-
-		var options = new SessionCreateOptions
-		{
-			Customer = newSession.CustomerId,
-			SuccessUrl = newSession.SuccessUrl,
-			Mode = "subscription",
-			LineItems =
-			[
-				new()
-				{
-					Price = Options.PriceId,
-					Quantity = 1
-				}
-			]
-		};
-
-		if (newSession.TrialPeriod > TimeSpan.Zero)
-		{
-			options.SubscriptionData = new SessionSubscriptionDataOptions
-			{
-				TrialEnd = DateTime.UtcNow.Add(newSession.TrialPeriod)
-			};
-		}
-
-		var session = await service.CreateAsync(options);
-		return session.Url;
-	}
 }

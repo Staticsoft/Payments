@@ -6,11 +6,12 @@ A Stripe payment integration library that provides a simplified interface for ma
 ## Aggregators
 
 ### Billing
-Manages payment-related operations including subscriptions and customers.
+Manages payment-related operations including subscriptions, customers, and checkout sessions.
 
 **Composed Interfaces**:
 - `Subscriptions` - Manages subscription lifecycle and status
 - `Customers` - Manages customer records
+- `Sessions` - Manages checkout and portal session creation
 
 ## Interfaces
 
@@ -50,18 +51,34 @@ public interface Subscriptions
     /// <returns>The canceled subscription.</returns>
     /// <exception cref="Subscriptions.NotFoundException">Thrown when the subscription does not exist.</exception>
     Task<Subscription> Cancel(string subscriptionId);
-    
-    /// <summary>
-    /// Creates a checkout session for a customer to set up payment and start a subscription.
-    /// </summary>
-    /// <param name="newSession">The checkout session details.</param>
-    /// <returns>The URL where the customer should be redirected to complete checkout.</returns>
-    Task<string> CreateSession(NewSession newSession);
 }
 ```
 
 **Exceptions**:
 - `Subscriptions.NotFoundException` - Thrown when a subscription with the specified ID does not exist
+
+### Sessions
+Manages checkout and portal session creation for subscriptions.
+
+**Methods**:
+```csharp
+public interface Sessions
+{
+    /// <summary>
+    /// Creates a checkout session for a customer to subscribe to a new subscription.
+    /// </summary>
+    /// <param name="session">The checkout session details.</param>
+    /// <returns>The URL where the customer should be redirected to complete checkout.</returns>
+    Task<string> CreateSubscription(NewSubscriptionSession session);
+    
+    /// <summary>
+    /// Creates a portal session for a customer to manage their existing subscriptions.
+    /// </summary>
+    /// <param name="session">The portal session details.</param>
+    /// <returns>The URL where the customer should be redirected to manage subscriptions.</returns>
+    Task<string> CreateManagement(NewManagementSession session);
+}
+```
 
 ### Customers
 Manages customer records including creation, retrieval, and deletion.
@@ -171,15 +188,26 @@ public record NewCustomer
 }
 ```
 
-### NewSession
-Input model for creating checkout sessions.
+### NewSubscriptionSession
+Input model for creating checkout sessions for new subscriptions.
 
 ```csharp
-public record NewSession
+public record NewSubscriptionSession
 {
     public required string CustomerId { get; init; }
     public TimeSpan TrialPeriod { get; init; } = TimeSpan.Zero;
     public required string SuccessUrl { get; init; }
+}
+```
+
+### NewManagementSession
+Input model for creating portal sessions for managing existing subscriptions.
+
+```csharp
+public record NewManagementSession
+{
+    public required string CustomerId { get; init; }
+    public required string ReturnUrl { get; init; }
 }
 ```
 
@@ -311,15 +339,21 @@ Test scenarios are ordered by increasing complexity, following the test ordering
 **Then** listing subscriptions for the customer returns exactly one subscription  
 **And** the subscription matches the created subscription
 
-#### Scenario: Create checkout session without trial and verify valid URL is returned
+#### Scenario: Create subscription session without trial and verify valid URL is returned
 **Given** I have created a customer  
-**When** I create a checkout session for the customer without a trial period  
+**When** I create a subscription session for the customer without a trial period  
 **Then** a valid URL is returned  
 **And** the URL starts with "http://" or "https://"
 
-#### Scenario: Create checkout session with trial and verify valid URL is returned
+#### Scenario: Create subscription session with trial and verify valid URL is returned
 **Given** I have created a customer  
-**When** I create a checkout session for the customer with a 14-day trial period  
+**When** I create a subscription session for the customer with a 14-day trial period  
+**Then** a valid URL is returned  
+**And** the URL starts with "http://" or "https://"
+
+#### Scenario: Create management session and verify valid URL is returned
+**Given** I have created a customer  
+**When** I create a management session for the customer  
 **Then** a valid URL is returned  
 **And** the URL starts with "http://" or "https://"
 

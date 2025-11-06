@@ -13,5 +13,6 @@ public static class DependencyInjectionExtensions
             .AddSingleton(options)
             .AddSingleton<Billing>()
             .AddSingleton<Subscriptions, StripeSubscriptions>()
-            .AddSingleton<Customers, StripeCustomers>();
+            .AddSingleton<Customers, StripeCustomers>()
+            .AddSingleton<Sessions, StripeSessions>();
 }
