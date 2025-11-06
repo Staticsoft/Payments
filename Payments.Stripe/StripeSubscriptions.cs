@@ -2,33 +2,33 @@ using Staticsoft.Payments.Abstractions;
 
 namespace Staticsoft.Payments.Stripe;
 
-public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
+public class StripeSubscriptions(
+	StripeSubscriptionService subscriptionService,
+	StripeCustomerService customerService,
+	StripeBillingOptions options
+) : Subscriptions
 {
+	readonly StripeSubscriptionService SubscriptionService = subscriptionService;
+	readonly StripeCustomerService CustomerService = customerService;
 	readonly StripeBillingOptions Options = options;
 
 	public async Task<IReadOnlyCollection<Subscription>> List(string customerId)
 	{
-		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new StripeSubscriptionService();
-
 		var options = new StripeSubscriptionListOptions
 		{
 			Customer = customerId,
 			Status = "all"
 		};
 
-		var subscriptions = await service.ListAsync(options);
+		var subscriptions = await SubscriptionService.ListAsync(options);
 		return subscriptions.Data.Select(MapToSubscription).ToArray();
 	}
 
 	public async Task<Subscription> Get(string subscriptionId)
 	{
-		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new StripeSubscriptionService();
-
 		try
 		{
-			var stripeSubscription = await service.GetAsync(subscriptionId);
+			var stripeSubscription = await SubscriptionService.GetAsync(subscriptionId);
 			return MapToSubscription(stripeSubscription);
 		}
 		catch (StripeException ex) when (ex.StripeError?.Type == "invalid_request_error")
@@ -39,12 +39,8 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 
 	public async Task<Subscription> Create(NewSubscription newSubscription)
 	{
-		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new StripeSubscriptionService();
-		var customerService = new StripeCustomerService();
-
 		// Check if customer has a default payment method
-		var customer = await customerService.GetAsync(newSubscription.CustomerId);
+		var customer = await CustomerService.GetAsync(newSubscription.CustomerId);
 		var hasPaymentMethod = customer.InvoiceSettings?.DefaultPaymentMethodId != null;
 
 		var options = new StripeSubscriptionCreateOptions
@@ -71,7 +67,7 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 			options.PaymentBehavior = "allow_incomplete";
 		}
 
-		var stripeSubscription = await service.CreateAsync(options);
+		var stripeSubscription = await SubscriptionService.CreateAsync(options);
 
 		return MapToSubscription(stripeSubscription);
 	}
@@ -86,12 +82,9 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 
 	public async Task<Subscription> Cancel(string subscriptionId)
 	{
-		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new StripeSubscriptionService();
-
 		try
 		{
-			var stripeSubscription = await service.CancelAsync(subscriptionId);
+			var stripeSubscription = await SubscriptionService.CancelAsync(subscriptionId);
 			return MapToSubscription(stripeSubscription);
 		}
 		catch (StripeException ex) when (ex.StripeError?.Type == "invalid_request_error")

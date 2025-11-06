@@ -1,9 +1,10 @@
+global using IStripeClient = Stripe.IStripeClient;
 global using StripeBillingPortalSessionCreateOptions = Stripe.BillingPortal.SessionCreateOptions;
 global using StripeBillingPortalSessionService = Stripe.BillingPortal.SessionService;
 global using StripeCheckoutSessionCreateOptions = Stripe.Checkout.SessionCreateOptions;
 global using StripeCheckoutSessionService = Stripe.Checkout.SessionService;
 global using StripeCheckoutSessionSubscriptionDataOptions = Stripe.Checkout.SessionSubscriptionDataOptions;
-global using StripeConfiguration = Stripe.StripeConfiguration;
+global using StripeClient = Stripe.StripeClient;
 global using StripeCustomer = Stripe.Customer;
 global using StripeCustomerCreateOptions = Stripe.CustomerCreateOptions;
 global using StripeCustomerInvoiceSettingsOptions = Stripe.CustomerInvoiceSettingsOptions;
