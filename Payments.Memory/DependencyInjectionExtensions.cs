@@ -10,5 +10,6 @@ public static class DependencyInjectionExtensions
             .AddSingleton<Billing>()
             .AddSingleton<MemoryCustomers>()
             .AddSingleton<Customers>(sp => sp.GetRequiredService<MemoryCustomers>())
-            .AddSingleton<Subscriptions, MemorySubscriptions>();
+            .AddSingleton<Subscriptions, MemorySubscriptions>()
+            .AddSingleton<Sessions, MemorySessions>();
 }

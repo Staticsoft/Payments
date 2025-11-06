@@ -335,11 +335,11 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task CreatesCheckoutSessionWithoutTrialAndReturnsValidUrl()
+	public async Task CreatesSubscriptionSessionWithoutTrialAndReturnsValidUrl()
 	{
 		var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
 
-		var url = await SUT.Subscriptions.CreateSession(new NewSession
+		var url = await SUT.Sessions.CreateSubscription(new NewSubscriptionSession
 		{
 			CustomerId = customer.Id,
 			SuccessUrl = "https://example.com/success"
@@ -352,15 +352,32 @@ public abstract class BillingTests : TestBase<Billing>, IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task CreatesCheckoutSessionWithTrialAndReturnsValidUrl()
+	public async Task CreatesSubscriptionSessionWithTrialAndReturnsValidUrl()
 	{
 		var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
 
-		var url = await SUT.Subscriptions.CreateSession(new NewSession
+		var url = await SUT.Sessions.CreateSubscription(new NewSubscriptionSession
 		{
 			CustomerId = customer.Id,
 			TrialPeriod = TimeSpan.FromDays(14),
 			SuccessUrl = "https://example.com/success"
+		});
+
+		Assert.NotNull(url);
+		Assert.NotEmpty(url);
+		Assert.True(url.StartsWith("http://") || url.StartsWith("https://"), 
+			$"Expected URL to start with http:// or https://, but got: {url}");
+	}
+
+	[Fact]
+	public async Task CreatesManagementSessionAndReturnsValidUrl()
+	{
+		var customer = await SUT.Customers.Create(new NewCustomer { Email = "test@example.com" });
+
+		var url = await SUT.Sessions.CreateManagement(new NewManagementSession
+		{
+			CustomerId = customer.Id,
+			ReturnUrl = "https://example.com/account"
 		});
 
 		Assert.NotNull(url);

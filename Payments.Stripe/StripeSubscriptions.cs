@@ -1,36 +1,34 @@
 using Staticsoft.Payments.Abstractions;
-using Stripe;
-using Stripe.Checkout;
 
 namespace Staticsoft.Payments.Stripe;
 
-public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
+public class StripeSubscriptions(
+	StripeSubscriptionService subscriptionService,
+	StripeCustomerService customerService,
+	StripeBillingOptions options
+) : Subscriptions
 {
+	readonly StripeSubscriptionService SubscriptionService = subscriptionService;
+	readonly StripeCustomerService CustomerService = customerService;
 	readonly StripeBillingOptions Options = options;
 
-	public async Task<IReadOnlyCollection<Abstractions.Subscription>> List(string customerId)
+	public async Task<IReadOnlyCollection<Subscription>> List(string customerId)
 	{
-		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new SubscriptionService();
-
-		var options = new SubscriptionListOptions
+		var options = new StripeSubscriptionListOptions
 		{
 			Customer = customerId,
 			Status = "all"
 		};
 
-		var subscriptions = await service.ListAsync(options);
+		var subscriptions = await SubscriptionService.ListAsync(options);
 		return subscriptions.Data.Select(MapToSubscription).ToArray();
 	}
 
-	public async Task<Abstractions.Subscription> Get(string subscriptionId)
+	public async Task<Subscription> Get(string subscriptionId)
 	{
-		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new SubscriptionService();
-
 		try
 		{
-			var stripeSubscription = await service.GetAsync(subscriptionId);
+			var stripeSubscription = await SubscriptionService.GetAsync(subscriptionId);
 			return MapToSubscription(stripeSubscription);
 		}
 		catch (StripeException ex) when (ex.StripeError?.Type == "invalid_request_error")
@@ -39,20 +37,16 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 		}
 	}
 
-	public async Task<Abstractions.Subscription> Create(NewSubscription newSubscription)
+	public async Task<Subscription> Create(NewSubscription newSubscription)
 	{
-		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new SubscriptionService();
-		var customerService = new CustomerService();
-
 		// Check if customer has a default payment method
-		var customer = await customerService.GetAsync(newSubscription.CustomerId);
+		var customer = await CustomerService.GetAsync(newSubscription.CustomerId);
 		var hasPaymentMethod = customer.InvoiceSettings?.DefaultPaymentMethodId != null;
 
-		var options = new SubscriptionCreateOptions
+		var options = new StripeSubscriptionCreateOptions
 		{
 			Customer = newSubscription.CustomerId,
-			Items = new List<SubscriptionItemOptions>
+			Items = new List<StripeSubscriptionItemOptions>
 			{
 				new() { Price = Options.PriceId }
 			},
@@ -73,12 +67,12 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 			options.PaymentBehavior = "allow_incomplete";
 		}
 
-		var stripeSubscription = await service.CreateAsync(options);
+		var stripeSubscription = await SubscriptionService.CreateAsync(options);
 
 		return MapToSubscription(stripeSubscription);
 	}
 
-	static Abstractions.Subscription MapToSubscription(global::Stripe.Subscription stripeSubscription)
+	static Subscription MapToSubscription(StripeSubscription stripeSubscription)
 		=> new()
 		{
 			Id = stripeSubscription.Id,
@@ -86,14 +80,11 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 			Status = MapStatus(stripeSubscription.Status)
 		};
 
-	public async Task<Abstractions.Subscription> Cancel(string subscriptionId)
+	public async Task<Subscription> Cancel(string subscriptionId)
 	{
-		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new SubscriptionService();
-
 		try
 		{
-			var stripeSubscription = await service.CancelAsync(subscriptionId);
+			var stripeSubscription = await SubscriptionService.CancelAsync(subscriptionId);
 			return MapToSubscription(stripeSubscription);
 		}
 		catch (StripeException ex) when (ex.StripeError?.Type == "invalid_request_error")
@@ -114,36 +105,4 @@ public class StripeSubscriptions(StripeBillingOptions options) : Subscriptions
 			"unpaid" => SubscriptionStatus.Unpaid,
 			_ => throw new ArgumentException($"Unknown subscription status: {status}")
 		};
-
-	public async Task<string> CreateSession(NewSession newSession)
-	{
-		StripeConfiguration.ApiKey = Options.ApiKey;
-		var service = new SessionService();
-
-		var options = new SessionCreateOptions
-		{
-			Customer = newSession.CustomerId,
-			SuccessUrl = newSession.SuccessUrl,
-			Mode = "subscription",
-			LineItems =
-			[
-				new()
-				{
-					Price = Options.PriceId,
-					Quantity = 1
-				}
-			]
-		};
-
-		if (newSession.TrialPeriod > TimeSpan.Zero)
-		{
-			options.SubscriptionData = new SessionSubscriptionDataOptions
-			{
-				TrialEnd = DateTime.UtcNow.Add(newSession.TrialPeriod)
-			};
-		}
-
-		var session = await service.CreateAsync(options);
-		return session.Url;
-	}
 }
